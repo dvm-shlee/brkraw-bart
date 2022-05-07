@@ -101,7 +101,7 @@ def calc_trajectory(rawobj, scan_id, params, ext_factor):
     traj_adjusted = traj_oversmp[:, :, proj_order] * ext_factor
     return traj_adjusted
 
-def recon_dataobj(rawobj, scan_id, ext_factor, n_thread):
+def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread):
     # prep basename of temporary file
     temp_basename = tmp.NamedTemporaryFile().name
 
@@ -110,6 +110,8 @@ def recon_dataobj(rawobj, scan_id, ext_factor, n_thread):
     params = parse_acqp(rawobj, scan_id)
     traj = calc_trajectory(rawobj, scan_id, params, ext_factor)
     traj_path = f'{temp_basename}_traj'
+    if missing > 0:
+        traj = traj[:, missing:, ...]
     cfl.writecfl(traj_path, traj)
     del traj # clear memory
     print('done')
@@ -130,6 +132,8 @@ def recon_dataobj(rawobj, scan_id, ext_factor, n_thread):
                 buffer = f.read(params['buffer_size'])
                 v = np.frombuffer(buffer, params['dtype_code']).reshape(params['fid_shape'], order='F')
                 v = (v[0]+1j*v[1])[np.newaxis, ...]
+                if missing > 0:
+                    v = v[:, missing:, ...]
                 volm_path = f'{temp_basename}_volm{str(frame).zfill(pnt_frames)}'
                 oput_path = f'{temp_basename}_oput{str(frame).zfill(pnt_frames)}'
                 cfl.writecfl(volm_path, v)
@@ -194,7 +198,7 @@ def recon_dataobj(rawobj, scan_id, ext_factor, n_thread):
 
 def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1):
     rawobj = brk.load(path)
-    dataobj_raw = recon_dataobj(rawobj, scan_id, ext_factor, n_thread)
+    dataobj_raw = recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread)
     # Datatype
     dataobj = ((dataobj_raw / dataobj_raw.max()) * 2**16).astype(np.uint16)
     del dataobj_raw # clear memory
