@@ -101,7 +101,7 @@ def calc_trajectory(rawobj, scan_id, params, ext_factor):
     traj_adjusted = traj_oversmp[:, :, proj_order] * ext_factor
     return traj_adjusted
 
-def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, range):
+def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range):
     # prep basename of temporary file
     temp_basename = tmp.NamedTemporaryFile().name
 
@@ -128,8 +128,8 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, range):
     with pvobj._open_object(pvobj._fid[scan_id]) as f:
         if params['num_frames'] > 1:
             pnt_frames = len(str(params['num_frames']))
-            start = range[0] if range[0] is not None else 0 
-            end = range[1] if range[1] is not None else params['num_frames'] - 1
+            start = crop_range[0] if crop_range[0] is not None else 0 
+            end = crop_range[1] if crop_range[1] is not None else params['num_frames'] - 1
             
             for frame in range(params['num_frames']):
                 if frame >= start and frame <= end:
