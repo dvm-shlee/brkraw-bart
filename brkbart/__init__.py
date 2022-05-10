@@ -101,7 +101,7 @@ def calc_trajectory(rawobj, scan_id, params, ext_factor):
     traj_adjusted = traj_oversmp[:, :, proj_order] * ext_factor
     return traj_adjusted
 
-def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread):
+def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, range):
     # prep basename of temporary file
     temp_basename = tmp.NamedTemporaryFile().name
 
@@ -128,18 +128,22 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread):
     with pvobj._open_object(pvobj._fid[scan_id]) as f:
         if params['num_frames'] > 1:
             pnt_frames = len(str(params['num_frames']))
+            start = range[0] if range[0] is not None else 0 
+            end = range[1] if range[1] is not None else params['num_frames'] - 1
+            
             for frame in range(params['num_frames']):
-                buffer = f.read(params['buffer_size'])
-                v = np.frombuffer(buffer, params['dtype_code']).reshape(params['fid_shape'], order='F')
-                v = (v[0]+1j*v[1])[np.newaxis, ...]
-                if missing > 0:
-                    v = v[:, missing:, ...]
-                volm_path = f'{temp_basename}_volm{str(frame).zfill(pnt_frames)}'
-                oput_path = f'{temp_basename}_oput{str(frame).zfill(pnt_frames)}'
-                cfl.writecfl(volm_path, v)
-                volm_fnames.append(volm_path)
-                oput_fnames.append(oput_path)
-                del v, buffer # clear memory
+                if frame >= start and frame <= end:
+                    buffer = f.read(params['buffer_size'])
+                    v = np.frombuffer(buffer, params['dtype_code']).reshape(params['fid_shape'], order='F')
+                    v = (v[0]+1j*v[1])[np.newaxis, ...]
+                    if missing > 0:
+                        v = v[:, missing:, ...]
+                    volm_path = f'{temp_basename}_volm{str(frame).zfill(pnt_frames)}'
+                    oput_path = f'{temp_basename}_oput{str(frame).zfill(pnt_frames)}'
+                    cfl.writecfl(volm_path, v)
+                    volm_fnames.append(volm_path)
+                    oput_fnames.append(oput_path)
+                    del v, buffer # clear memory
         else:
             buffer = f.read()
             v = np.frombuffer(buffer, params['dtype_code']).reshape(params['fid_shape'], order='F')
@@ -196,9 +200,9 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread):
             
     return dataobj
 
-def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1):
+def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None):
     rawobj = brk.load(path)
-    dataobj_raw = recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread)
+    dataobj_raw = recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, [start, end])
     # Datatype
     dataobj = ((dataobj_raw / dataobj_raw.max()) * 2**16).astype(np.uint16)
     del dataobj_raw # clear memory

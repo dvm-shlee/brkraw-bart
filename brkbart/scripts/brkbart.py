@@ -30,6 +30,8 @@ def main():
     tonii.add_argument("-m", "--missing", help="Amount sampling point to skip on trajectory", type=int, default=0)
     tonii.add_argument("-e", "--extend", help="Extend FOV factor", type=float, default=1.0)
     tonii.add_argument("-c", "--core", help="Number of core", type=int, default=1)
+    tonii.add_argument("--start", help="start frame for partial reconstruction", type=int, default=None)
+    tonii.add_argument("--end", help="end frame for partial reconstruction", type=int, default=None)
     
     args = parser.parse_args()
 
@@ -39,11 +41,13 @@ def main():
         rescan_bart(path, depth)
         
     elif args.function == 'tonii':
-        path     = args.input
-        scan_id  = args.scanid
+        path = args.input
+        scan_id = args.scanid
         missing = args.missing
         extend = args.extend
         n_thread = args.core
+        start = args.start
+        end = args.end
         study    = BrukerLoader(path)
         
         if study.is_pvdataset:
@@ -59,7 +63,7 @@ def main():
                 scan_id = int(scan_id)
         else:
             print('{} is not PvDataset.'.format(path))
-        nibobj = get_nifti(path, scan_id, missing, extend, n_thread)
+        nibobj = get_nifti(path, scan_id, missing, extend, n_thread, start, end)
         nibobj.to_filename(f'{output_fname}.nii.gz')
         print(f'{output_fname}.nii.gz created.')
     else:
