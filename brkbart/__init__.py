@@ -209,6 +209,7 @@ def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, en
     
     # Gradient direction correction
     grad_matrix = rawobj.get_acqp(scan_id).parameters['ACQ_GradientMatrix'][0].T
+    grad_matrix = np.round(grad_matrix, decimals=0)
     axis_order = np.arange(dataobj.ndim)
     axis_order[:3] = tuple([int(np.squeeze(np.nonzero(ax))) for ax in grad_matrix])
     flip_axis = np.nonzero(grad_matrix.sum(0) < 0)[0].tolist()
