@@ -40,7 +40,7 @@ setup(name='brkbart',
             'Intended Audience :: Science/Research',
             'Topic :: Scientific/Engineering :: Medical Science Apps.',
             'Natural Language :: English',
-            'Programming Language :: Python :: >3.5'
+            'Programming Language :: Python :: 3'
       ],
       keywords = 'bruker bart reconstruction mri'
      )
