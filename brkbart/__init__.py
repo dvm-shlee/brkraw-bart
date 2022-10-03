@@ -11,7 +11,7 @@ import tempfile as tmp
 import paralexe as pe
 import multiprocessing as mp
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 try:
     __toolbox_path = config.config.get('Default', 'toolbox_path')
