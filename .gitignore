@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+brkbart.egg-info/entry_points.txt
+brkbart.egg-info/PKG-INFO
+brkbart.egg-info/requires.txt
+brkbart.egg-info/SOURCES.txt
