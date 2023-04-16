@@ -1,5 +1,0 @@
-bruker>=0.3.8-rc1
-paralexe>=0.1.0
-numpy>=1.19.0
-scipy>=1.6.0
-tqdm>=4.40.0

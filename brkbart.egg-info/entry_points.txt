@@ -1,3 +1,0 @@
-[console_scripts]
-brkbart = brkbart.scripts.brkbart:main
-
