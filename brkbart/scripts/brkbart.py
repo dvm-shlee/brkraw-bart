@@ -49,7 +49,7 @@ def main():
         n_thread = args.core
         start = args.start
         end = args.end
-        ramp_correction = False if args.wo_ramptime_correction else True
+        ramp_correction = False if args.wo_ramp_correction else True
 
         study    = BrukerLoader(path)
         
