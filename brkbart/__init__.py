@@ -119,7 +119,7 @@ def ramp_time_correction(traj, ramp_time, grad_res):
     return traj_ramp
 
 
-def calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction=True):
+def calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction):
     method = rawobj.get_method(scan_id).parameters
     over_samp = method['OverSampling']
     mat_size = np.array(method['PVM_Matrix'])
@@ -168,14 +168,14 @@ def calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction=True):
     return traj_adjusted
 
 
-def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range):
+def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range, ramp_correction):
     # prep basename of temporary file
     temp_basename = tmp.NamedTemporaryFile().name
 
     # acqp parameter parsing
     print('Converting trajectory to cfl...', end='')
     params = parse_acqp(rawobj, scan_id)
-    traj = calc_trajectory(rawobj, scan_id, params, ext_factor)
+    traj = calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction)
     traj_path = f'{temp_basename}_traj'
     if missing > 0:
         traj = traj[:, missing:, ...]
@@ -272,10 +272,10 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range):
     return dataobj
 
 
-def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None):
+def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None, ramp_correction=True):
     rawobj = brk.load(path)
     dataobj_raw = recon_dataobj(
-        rawobj, scan_id, missing, ext_factor, n_thread, [start, end])
+        rawobj, scan_id, missing, ext_factor, n_thread, [start, end], ramp_correction)
     # Datatype
     dataobj = ((dataobj_raw / dataobj_raw.max()) * 2**16).astype(np.uint16)
     del dataobj_raw  # clear memory

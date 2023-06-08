@@ -32,6 +32,7 @@ def main():
     tonii.add_argument("-c", "--core", help="Number of core", type=int, default=1)
     tonii.add_argument("--start", help="start frame for partial reconstruction", type=int, default=None)
     tonii.add_argument("--end", help="end frame for partial reconstruction", type=int, default=None)
+    tonii.add_argument("--wo_ramp_correction", help="skip ramp time correction", action='store_true')
     
     args = parser.parse_args()
 
@@ -48,6 +49,8 @@ def main():
         n_thread = args.core
         start = args.start
         end = args.end
+        ramp_correction = False if args.wo_ramptime_correction else True
+
         study    = BrukerLoader(path)
         
         if study.is_pvdataset:
@@ -63,7 +66,7 @@ def main():
                 scan_id = int(scan_id)
         else:
             print('{} is not PvDataset.'.format(path))
-        nibobj = get_nifti(path, scan_id, missing, extend, n_thread, start, end)
+        nibobj = get_nifti(path, scan_id, missing, extend, n_thread, start, end, ramp_correction)
         nibobj.to_filename(f'{output_fname}.nii.gz')
         print(f'{output_fname}.nii.gz created.')
     else:
