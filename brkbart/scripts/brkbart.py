@@ -33,6 +33,7 @@ def main():
     tonii.add_argument("--start", help="start frame for partial reconstruction", type=int, default=None)
     tonii.add_argument("--end", help="end frame for partial reconstruction", type=int, default=None)
     tonii.add_argument("--wo_ramp_correction", help="skip ramp time correction", action='store_true')
+    tonii.add_argument("--prelinical_view", help="paravision uses preclinical view", action='store_true')
     
     args = parser.parse_args()
 
@@ -50,6 +51,7 @@ def main():
         start = args.start
         end = args.end
         ramp_correction = False if args.wo_ramp_correction else True
+        preclinical_view = True if args.preclinical_view else False
 
         study    = BrukerLoader(path)
         
@@ -66,7 +68,7 @@ def main():
                 scan_id = int(scan_id)
         else:
             print('{} is not PvDataset.'.format(path))
-        nibobj = get_nifti(path, scan_id, missing, extend, n_thread, start, end, ramp_correction)
+        nibobj = get_nifti(path, scan_id, missing, extend, n_thread, start, end, ramp_correction, preclinical_view)
         nibobj.to_filename(f'{output_fname}.nii.gz')
         print(f'{output_fname}.nii.gz created.')
     else:

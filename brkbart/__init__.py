@@ -19,6 +19,8 @@ import brkraw as brk
 import paralexe as pe
 from . import config
 from . import utils
+from nibabel.affines import from_matvec, to_matvec
+from brkraw.lib.orient import reversed_pose_correction, build_affine_from_orient_info, apply_rotate
 
 __version__ = "0.0.3"
 
@@ -272,7 +274,87 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range, ra
     return dataobj
 
 
-def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None, ramp_correction=True):
+def scale_pose(rmat, pose, ext_factor=1):
+    if ext_factor != 1:
+        # scale_matrix
+        smat = np.eye(3)*ext_factor
+        # scale_and_rotation_matrix
+        srmat = smat.dot(rmat)
+        # correct pose
+        pose = srmat.T.dot(pose)
+        pose = rmat.dot(pose)
+    return pose
+
+
+def build_affine_from_orient_info(resol, rmat, pose,
+                                  subj_pose, subj_type, slice_orient):
+    if slice_orient in ['axial', 'sagital']:
+        resol = np.diag(np.array(resol))
+    else:
+        resol = np.diag(np.array(resol) * np.array([1, 1, -1]))
+    rmat = rmat.T.dot(resol)
+    
+    affine = from_matvec(rmat, pose)
+
+    # convert space from image to subject
+    # below positions are all reflect human-based position
+    if subj_pose:
+        if subj_pose == 'Head_Supine':
+            affine = apply_rotate(affine, rad_z=np.pi)
+        elif subj_pose == 'Head_Prone':
+            pass
+        # From here, not urgent, extra work to determine correction matrix needed.
+        elif subj_pose == 'Head_Left':
+            affine = apply_rotate(affine, rad_z=np.pi/2)
+        elif subj_pose == 'Head_Right':
+            affine = apply_rotate(affine, rad_z=-np.pi/2)
+        elif subj_pose in ['Foot_Supine', 'Tail_Supine']:
+            affine = apply_rotate(affine, rad_x=np.pi)
+        elif subj_pose in ['Foot_Prone', 'Tail_Prone']:
+            affine = apply_rotate(affine, rad_y=np.pi)
+        elif subj_pose in ['Foot_Left', 'Tail_Left']:
+            affine = apply_rotate(affine, rad_z=np.pi/2)
+        elif subj_pose in ['Foot_Right', 'Tail_Right']:
+            affine = apply_rotate(affine, rad_z=-np.pi/2)
+        else:  # in case Bruker put additional value for this header
+            raise Exception('NotIntegrated')
+
+    if subj_type != 'Biped':
+        # correct subject space if not biped (human or non-human primates)
+        # not sure this rotation is independent with subject pose, so put here instead last
+        affine = apply_rotate(affine, rad_x=-np.pi/2, rad_y=np.pi)
+    return affine
+
+
+def calc_affine(rawobj, scan_id, reco_id, ext_factor=1, preclinical_view=True):
+    visu_pars = rawobj.get_visu_pars(scan_id, reco_id)
+    method = rawobj.get_method(scan_id)
+
+    is_reversed = True if rawobj._get_disk_slice_order(visu_pars) == 'reverse' else False
+    slice_info = rawobj._get_slice_info(visu_pars)
+    spatial_info = rawobj._get_spatial_info(visu_pars)
+    orient_info = rawobj._get_orient_info(visu_pars, method)
+    slice_orient_map = {0: 'sagital', 1: 'coronal', 2: 'axial'}
+    subj_pose = orient_info['subject_position']
+    if preclinical_view:
+        subj_type = None
+    else:
+        subj_type = orient_info['subject_type']
+
+    sidx = orient_info['orient_order'].index(2)
+    slice_orient = slice_orient_map[sidx]
+    resol = spatial_info['spatial_resol'][0]
+    rmat = orient_info['orient_matrix']
+    pose = orient_info['volume_position']
+    if is_reversed:
+        distance = slice_info['slice_distances_each_pack']
+        pose = reversed_pose_correction(pose, rmat, distance)
+    pose = scale_pose(rmat, pose, ext_factor)
+    affine = build_affine_from_orient_info(resol, rmat, pose, subj_pose, subj_type, slice_orient)
+    return affine
+
+
+def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None, ramp_correction=True, preclinical_view=True):
     rawobj = brk.load(path)
     dataobj_raw = recon_dataobj(
         rawobj, scan_id, missing, ext_factor, n_thread, [start, end], ramp_correction)
@@ -297,7 +379,7 @@ def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, en
     dataobj = np.flip(dataobj, 1)
 
     # NIFTI conversion
-    affine = rawobj.get_affine(scan_id, 1)
+    affine = calc_affine(rawobj, scan_id, 1, ext_factor, preclinical_view)
 
     visu_pars = rawobj.get_visu_pars(scan_id, 1)
     temporal_resol = rawobj._get_temp_info(visu_pars)['temporal_resol']
