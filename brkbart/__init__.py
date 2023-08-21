@@ -200,9 +200,11 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range, ra
             pnt_frames = len(str(params['num_frames']))
             start = crop_range[0] if crop_range[0] is not None else 0
             end = crop_range[1] if crop_range[1] is not None else params['num_frames'] - 1
-
+            offset = start * params['buffer_size']
+            f.seek(offset)
+            
             for frame in range(params['num_frames']):
-                if frame >= start and frame <= end:
+                if frame >= start and frame < end:
                     buffer = f.read(params['buffer_size'])
                     v = np.frombuffer(buffer, params['dtype_code']).reshape(
                         params['fid_shape'], order='F')
