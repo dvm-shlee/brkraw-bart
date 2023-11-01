@@ -121,7 +121,7 @@ def ramp_time_correction(traj, ramp_time, grad_res):
     return traj_ramp
 
 
-def calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction):
+def calc_trajectory(rawobj, scan_id, params, ext_factor, ext_vector, ramp_correction):
     method = rawobj.get_method(scan_id).parameters
     over_samp = method['OverSampling']
     mat_size = np.array(method['PVM_Matrix'])
@@ -170,14 +170,14 @@ def calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction):
     return traj_adjusted
 
 
-def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range, ramp_correction):
+def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range, ext_vector, ramp_correction):
     # prep basename of temporary file
     temp_basename = tmp.NamedTemporaryFile().name
 
     # acqp parameter parsing
     print('Converting trajectory to cfl...', end='')
     params = parse_acqp(rawobj, scan_id)
-    traj = calc_trajectory(rawobj, scan_id, params, ext_factor, ramp_correction)
+    traj = calc_trajectory(rawobj, scan_id, params, ext_factor, ext_vector, ramp_correction)
     traj_path = f'{temp_basename}_traj'
     if missing > 0:
         traj = traj[:, missing:, ...]
@@ -199,7 +199,7 @@ def recon_dataobj(rawobj, scan_id, missing, ext_factor, n_thread, crop_range, ra
         if params['num_frames'] > 1:
             pnt_frames = len(str(params['num_frames']))
             start = crop_range[0] if crop_range[0] is not None else 0
-            end = crop_range[1] if crop_range[1] is not None else params['num_frames'] - 1
+            end = crop_range[1] if crop_range[1] is not None else params['num_frames']
             offset = start * params['buffer_size']
             f.seek(offset)
             
@@ -356,10 +356,10 @@ def calc_affine(rawobj, scan_id, reco_id, ext_factor=1, preclinical_view=True):
     return affine
 
 
-def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None, ramp_correction=True, preclinical_view=True):
+def get_nifti(path, scan_id, missing=0, ext_factor=1, n_thread=1, start=None, end=None, ext_vector=None, ramp_correction=True, preclinical_view=True):
     rawobj = brk.load(path)
     dataobj_raw = recon_dataobj(
-        rawobj, scan_id, missing, ext_factor, n_thread, [start, end], ramp_correction)
+        rawobj, scan_id, missing, ext_factor, n_thread, [start, end], ext_vector, ramp_correction)
     # Datatype
     dataobj = ((dataobj_raw / dataobj_raw.max()) * 2**16).astype(np.uint16)
     del dataobj_raw  # clear memory
